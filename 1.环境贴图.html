@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>高光贴图</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: auto;
+    }
+  </style>
+  <!--引入three.js三维引擎-->
+  <script src="http://yg.bfuer.com/three.js-R125/build/three.js"></script>
+  <!-- <script src="..\OrbitControls.js"></script> -->
+  <script src="http://yg.bfuer.com/three.js-R125/examples/js/controls/OrbitControls.js"></script>
+</head>
+
+<body>
+  <script type="text/javascript">
+    //全局变量，g表示global
+    let g_scene, g_camera, g_renderer, g_controls;
+    let g_waterTexture, g_treeTexture;
+    let t = 0;
+    let g_directionalLight;
+    let g_lightPoint;
+    let g_lightPosStep = 15;
+
+    var cubeCamera = undefined;
+    //***************程序主逻辑********************
+    init();//初始化
+    loop();//循环开始
+
+
+    //循环运行update，render
+    function loop() {
+      requestAnimationFrame(loop);
+      update();
+      render();
+    }
+
+    function update() {
+
+    }
+
+    //渲染
+    function render() {
+      g_renderer.render(g_scene, g_camera);
+      cubeCamera.updateCubeMap(g_renderer, g_scene);//更新渲染立方体贴图
+    }
+
+    //将需要初始化的放在该方法中统一初始化
+    function init() {
+      initScene();//初始化场景   
+      initCamera();//初始化相机
+      initRenender();//初始化渲染器
+      initLight();//初始化光线
+      setWindown();//窗体的设置
+      setEventsMouse();//定义鼠标事件
+      setKeyEvents();//定义键盘按键事件       
+      setOrbitControl();//设置Orbit控制    
+      setMesh();//定义场景中的物体
+    }
+
+    //*************************************************
+    //初始化场景
+    function initScene() {
+      g_scene = new THREE.Scene();//创建场景
+
+      let axisHelper = new THREE.AxesHelper(250);
+      g_scene.add(axisHelper);
+    }
+
+    //初始化相机
+    function initCamera() {
+      let k = window.innerWidth / window.innerHeight; //窗口宽高比
+      let s = 150;
+
+      // g_camera = new THREE.OrthographicCamera(-s * k, s * k, s, -s, 1, 1000);
+      g_camera = new THREE.PerspectiveCamera(60, k, 1, 3000);
+      g_camera.position.set(100, 150, 100); //设置相机位置
+      g_camera.lookAt(g_scene.position); //设置相机方向(指向的场景对象)
+
+
+    }
+
+    //初始化渲染器
+    function initRenender() {
+      //创建渲染器
+      g_renderer = new THREE.WebGLRenderer();
+      g_renderer.setSize(window.innerWidth, window.innerHeight);
+      g_renderer.setClearColor(0xb9d3ff, 1); //设置背景颜色
+      document.body.appendChild(g_renderer.domElement); //body元素中插入canvas对象, 渲染到浏览器
+    }
+
+    //初始化光源
+    function initLight() {
+      //点光源
+      g_lightPoint = new THREE.PointLight(0xaaaaaa);
+      g_lightPoint.position.set(200, 100, 300); //点光源位置
+      g_scene.add(g_lightPoint); //点光源添加到场景中
+      //环境光
+      let ambient = new THREE.AmbientLight(0x999999);
+      g_scene.add(ambient);
+
+      // 方向光
+      // g_directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+      // g_directionalLight.position.set(600, 100, 40);
+      // g_scene.add(g_directionalLight);
+
+      //聚光灯
+      // let light_spot = new THREE.SpotLight(0x00ffff);
+      // light_spot.position.set(-20, 80, -100); //点光源位置
+      // light_spot.angle = 0.5;
+      // g_scene.add(light_spot); //点光源添加到场景中
+
+      // let spotLightHelper = new THREE.SpotLightHelper( light_spot );
+      // g_scene.add( spotLightHelper );
+    }
+
+    //*************************************************
+    //响应resize消息，设置窗口尺寸并重设相机投影参数
+    function setWindown() {
+      //加入事件监听器,窗口自适应
+      window.addEventListener('resize', function () {
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        g_renderer.setSize(width, height);
+        g_camera.aspect = width / height;
+        g_camera.updateProjectionMatrix();
+      });
+    }
+
+    //定义鼠标事件
+    function setEventsMouse() {
+      //点击了鼠标左键
+      window.addEventListener('click', function (e) {
+        if (e.button === 0) {
+          console.log("点击了鼠标左键");
+        }
+      });
+
+      //点击了鼠标右键
+      window.addEventListener('contextmenu', function (e) {
+        if (e.button === 2) {
+          console.log("点击了鼠标右键");
+        }
+      });
+
+      //鼠标移动坐标2D坐标
+      window.addEventListener('mousemove', function (e) {
+        // console.log('x:' + e.x);
+        // console.log('y:' + e.y);
+      });
+
+    }
+
+    //定义键盘按键事件
+    function setKeyEvents() {
+      window.addEventListener('keydown', function (e) {
+        // console.log(e);
+        switch (e.key) {
+          case "a":
+            g_lightPoint.position.x -= g_lightPosStep;
+            // requestAnimationFrame(loop);
+            break;
+          case "d":
+            g_lightPoint.position.x += g_lightPosStep;
+            break;
+          case "w":
+            g_lightPoint.position.y -= g_lightPosStep;
+            break;
+          case "s":
+            g_lightPoint.position.y += g_lightPosStep;
+            break;
+        }
+      });
+    }
+
+    //定义控制
+    function setOrbitControl() {
+      //轨道控制 镜头的移动
+      g_controls = new THREE.OrbitControls(g_camera, g_renderer.domElement);
+    }
+
+    //定义场景中的网格物体
+    function setMesh() {
+
+/////----------------------------------cube相机------------//////////////
+
+const cubeRenderTarget = new THREE.WebGLCubeRenderTarget( 128, { 
+  // format: RGBFormat, 
+  generateMipmaps: true,
+  // minFilter: LinearMipmapLinearFilter
+  //注释的两个变量一个是格式，一个是线性采样的方法。但是这个版本的THREE貌似没有。
+});
+
+//创建cubeCamera
+//1：近剪切面的距离；1000：远剪切面的距离；cubeRenderTarget:将要创建的纹理对象
+cubeCamera = new THREE.CubeCamera(1, 1000, cubeRenderTarget)
+cubeCamera.position.set(0, 0, 0)
+g_scene.add(cubeCamera)
+
+///////////////////////////////////////////////////////////////////////////////////////
+
+    // var geometry = new THREE.BoxBufferGeometry(100, 100, 100);
+      var geometry = new THREE.SphereGeometry(100, 100, 100);
+
+      var loader = new THREE.CubeTextureLoader();
+      // 所有贴图在同一目录下，可以使用该方法设置共用路径
+      loader.setPath('环境贴图/');
+      var CubeTexture = loader.load(['px.jpg', 'nx.jpg', 'py.jpg', 'ny.jpg', 'pz.jpg', 'nz.jpg']);
+
+      var material = new THREE.MeshPhongMaterial({
+        // color: 0x999999,
+        // specular: 0xff0000,//高光部分的颜色 
+        // shininess: 30,
+        
+
+        envMap: cubeCamera.renderTarget.texture,
+        // envMap: CubeTexture, //设置环境贴图        
+        // reflectivity: 1,  // 环境贴图反射率
+
+      });
+
+//////////-------------新球体-----------------------------////////
+
+
+var geometryNew = new THREE.SphereGeometry(100, 100, 100);
+var materialNew = new THREE.MeshPhongMaterial({
+    // envMap: cubeCamera.renderTarget.texture,
+    // envMap: cubeCamera.renderTarget,
+    envMap:CubeTexture,
+    side: THREE.DoubleSide
+      });
+var meshNew = new THREE.Mesh(geometryNew,materialNew);
+meshNew.translateX(300);  
+g_scene.add(meshNew);
+
+
+////////////////////////////////////////////////
+
+      // console.log(CubeTexture.image);
+      var mesh = new THREE.Mesh(geometry, material); //网格模型对象Mesh
+      g_scene.add(mesh); //网格模型添加到场景中
+      g_scene.background = CubeTexture;
+
+    }
+
+
+
+
+  </script>
+</body>
+
+</html>
